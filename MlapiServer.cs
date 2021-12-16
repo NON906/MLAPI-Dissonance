@@ -3,6 +3,7 @@ using JetBrains.Annotations;
 using MLAPI;
 using MLAPI.Messaging;
 using MLAPI.Serialization.Pooled;
+using MLAPI.Transports;
 using MLAPI.Transports.UNET;
 using System;
 using System.Collections.Generic;
@@ -46,9 +47,9 @@ public class MlapiServer : BaseServer<MlapiServer, MlapiClient, MlapiConn>
 
     protected override void SendReliable(MlapiConn destination, ArraySegment<byte> packet)
     {
-        using (PooledBitStream stream = PooledBitStream.Get())
+        using (var stream = PooledNetworkBuffer.Get())
         {
-            using (PooledBitWriter writer = PooledBitWriter.Get(stream))
+            using (var writer = PooledNetworkWriter.Get(stream))
             {
                 var count = packet.Count;
                 var offset = packet.Offset;
@@ -56,14 +57,14 @@ public class MlapiServer : BaseServer<MlapiServer, MlapiClient, MlapiConn>
                 {
                     writer.WriteByte(packet.Array[i + offset]);
                 }
-                if (NetworkingManager.Singleton.LocalClientId == destination.clientId)
+                if (NetworkManager.Singleton.LocalClientId == destination.clientId)
                 {
                     // As we are the host in this scenario we should send the packet directly to the client rather than over the network and avoid loopback issues
                     _network.client.NetworkReceivedPacket(packet);
                 }
                 else
                 {
-                    CustomMessagingManager.SendNamedMessage("DissonanceToClient", destination.clientId, stream, "MLAPI_ANIMATION_UPDATE");
+                    CustomMessagingManager.SendNamedMessage("DissonanceToClient", destination.clientId, stream, NetworkChannel.AnimationUpdate);
                 }
             }
         }
@@ -71,9 +72,9 @@ public class MlapiServer : BaseServer<MlapiServer, MlapiClient, MlapiConn>
 
     protected override void SendUnreliable(MlapiConn destination, ArraySegment<byte> packet)
     {
-        using (PooledBitStream stream = PooledBitStream.Get())
+        using (var stream = PooledNetworkBuffer.Get())
         {
-            using (PooledBitWriter writer = PooledBitWriter.Get(stream))
+            using (var writer = PooledNetworkWriter.Get(stream))
             {
                 var count = packet.Count;
                 var offset = packet.Offset;
@@ -81,14 +82,14 @@ public class MlapiServer : BaseServer<MlapiServer, MlapiClient, MlapiConn>
                 {
                     writer.WriteByte(packet.Array[i + offset]);
                 }
-                if (NetworkingManager.Singleton.LocalClientId == destination.clientId)
+                if (NetworkManager.Singleton.LocalClientId == destination.clientId)
                 {
                     // As we are the host in this scenario we should send the packet directly to the client rather than over the network and avoid loopback issues
                     _network.client.NetworkReceivedPacket(packet);
                 }
                 else
                 {
-                    CustomMessagingManager.SendNamedMessage("DissonanceToClient", destination.clientId, stream, "MLAPI_TIME_SYNC");
+                    CustomMessagingManager.SendNamedMessage("DissonanceToClient", destination.clientId, stream, NetworkChannel.TimeSync);
                 }
             }
         }
